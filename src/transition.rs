@@ -16,24 +16,24 @@ pub struct Transition {
 }
 
 impl Transition {
-    pub fn draw(&mut self, base_texture: Texture2D, into_texture: Texture2D, progress: f32) {
+    pub fn draw(&mut self, base_texture: &Texture2D, into_texture: &Texture2D, progress: f32) {
         self.draw_ex(base_texture, into_texture, progress, DrawParam::default());
     }
 
     pub fn draw_ex(
         &mut self,
-        base_texture: Texture2D,
-        into_texture: Texture2D,
+        base_texture: &Texture2D,
+        into_texture: &Texture2D,
         progress: f32,
         draw_param: DrawParam,
     ) {
         self.material.set_uniform("cutoff", progress);
         self.material.set_uniform("fade", self.fade);
-        self.material.set_texture("tex_into", into_texture);
-        gl_use_material(self.material);
+        self.material.set_texture("tex_into", into_texture.clone());
+        gl_use_material(&self.material);
         clear_background(WHITE);
         draw_texture_ex(
-            base_texture,
+            &base_texture,
             -1.,
             -1.,
             WHITE,
@@ -61,8 +61,10 @@ impl Transition {
         };
 
         let material = load_material(
-            &vertex_shader,
-            &fragment_shader,
+            ShaderSource::Glsl {
+                vertex: &vertex_shader,
+                fragment: &fragment_shader,
+            },
             MaterialParams {
                 textures: vec!["tex_transition".to_string(), "tex_into".to_string()],
                 uniforms: vec![
@@ -70,7 +72,7 @@ impl Transition {
                     ("fade".to_string(), UniformType::Float1),
                 ],
                 pipeline_params,
-            },
+            }
         )
         .unwrap();
 

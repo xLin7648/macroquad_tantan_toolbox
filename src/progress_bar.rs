@@ -25,10 +25,10 @@ impl ProgressBar {
         self.material.set_uniform("progress", progress);
         self.material
             .set_uniform("uv_offset", get_time() as f32 * self.scroll_speed);
-        draw_texture(self.texture_border, pos.x, pos.y, WHITE);
-        gl_use_material(self.material);
+        draw_texture(&self.texture_border, pos.x, pos.y, WHITE);
+        gl_use_material(&self.material);
         draw_texture_ex(
-            self.texture,
+            &self.texture,
             pos.x + self.inner_offset.x,
             pos.y + self.inner_offset.y,
             WHITE,
@@ -51,17 +51,18 @@ impl ProgressBar {
         };
 
         let material = load_material(
-            &vertex_shader,
-            &fragment_shader,
+            ShaderSource::Glsl {
+                vertex: &vertex_shader,
+                fragment: &fragment_shader,
+            },
             MaterialParams {
-                //textures: vec!["tex_bar".to_string()],
                 textures: vec![],
                 uniforms: vec![
                     ("progress".to_string(), UniformType::Float1),
                     ("uv_offset".to_string(), UniformType::Float1),
                 ],
                 pipeline_params,
-            },
+            }
         )
         .unwrap();
 

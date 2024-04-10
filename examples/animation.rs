@@ -4,60 +4,66 @@ use macroquad_tantan_toolbox::animation::*;
 #[derive(std::hash::Hash, Eq, PartialEq)]
 enum MooseAnimationIdentifier {
     Run,
-    Sleep,
 }
-
-const GAME_SIZE: Vec2 = const_vec2!([64f32, 64f32]);
+struct MouseAni {
+    pub ani: AnimationInstance::<MooseAnimationIdentifier>,
+    pub pos: Vec2
+}
 
 #[macroquad::main("animation")]
 async fn main() {
-    let texture: Texture2D = load_texture("examples/resources/moose.png").await.unwrap();
+    request_new_screen_size(1280., 720.);
+    let texture: Texture2D = load_texture("examples/resources/e.png").await.unwrap();
     texture.set_filter(FilterMode::Nearest);
 
-    let game_render_target = render_target(GAME_SIZE.x as u32, GAME_SIZE.y as u32);
-    game_render_target.texture.set_filter(FilterMode::Nearest);
+    let mut animations: Vec<MouseAni> = vec![];
 
-    let mut animation = AnimationInstance::<MooseAnimationIdentifier>::new(
-        10f32,
-        1f32,
-        texture,
-        MooseAnimationIdentifier::Run,
+    let render_target2 = render_target(1280, 720);
+    let mut camera = Camera2D::from_display_rect(
+        Rect::new(0., 0., 1280., 720.)
     );
-    animation.add_animation(0, 3, None, 15f32, MooseAnimationIdentifier::Run);
-    animation.add_animation(4, 9, Some(7), 13f32, MooseAnimationIdentifier::Sleep);
-    let camera = Camera2D {
-        zoom: vec2(1. / GAME_SIZE.x * 2., 1. / GAME_SIZE.y * 2.),
-        target: vec2(0.0, 0.0),
-        render_target: Some(game_render_target),
-        ..Default::default()
-    };
+    camera.zoom.y = -camera.zoom.y; // uncomment this to fix
+    camera.render_target = Some(render_target2); // or comment out this to fix
     loop {
         set_camera(&camera);
-        clear_background(BLUE);
+        clear_background(BLACK);
 
-        // change animation
-        if is_key_pressed(KeyCode::Space) {
-            let next_state = match animation.current_animation {
-                MooseAnimationIdentifier::Run => MooseAnimationIdentifier::Sleep,
-                MooseAnimationIdentifier::Sleep => MooseAnimationIdentifier::Run,
-            };
-            animation.play_animation(next_state);
+        if is_mouse_button_pressed(MouseButton::Left) {
+            let mut animation = AnimationInstance::<MooseAnimationIdentifier>::new(
+                6f32,
+                5f32,
+                texture.clone(),
+                MooseAnimationIdentifier::Run,
+            );
+            animation.add_animation(0, 30, None, 45f32, MooseAnimationIdentifier::Run);
+            animations.push(
+                MouseAni { 
+                    ani: animation, 
+                    pos: mouse_position().into()
+                }
+            );
         }
 
-        animation.update(get_frame_time());
-        animation.draw(&vec2(0f32, 0f32), false);
-        //animation.draw(&vec2(-GAME_SIZE.x * 0.5f32, 0f32), false);
+        animations.retain(|ma| ma.ani.is_end() == false);
+
+        for ma in animations.iter_mut() {
+            ma.ani.update(get_frame_time());
+            ma.ani.draw(&ma.pos, false, Some(Vec2::ONE), WHITE);
+        }
+
+        /* animation.update(get_frame_time());
+        animation.draw(&vec2(500f32, 500f32), false, WHITE); */
 
         set_default_camera();
-        clear_background(BLUE);
+        clear_background(BLACK);
         // draw game
         draw_texture_ex(
-            game_render_target.texture,
-            0.,
-            0.,
+            &camera.render_target.as_ref().unwrap().texture,
+            screen_width() * 0.5,
+            screen_height() * 0.5,
             WHITE,
             DrawTextureParams {
-                dest_size: Some(vec2(screen_width(), screen_height())),
+                dest_size: Some(vec2(1280., 720.)),
                 ..Default::default()
             },
         );

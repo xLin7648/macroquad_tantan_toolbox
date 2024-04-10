@@ -83,23 +83,42 @@ where
             .animations
             .get(&self.current_animation)
             .expect("NO ANIMATION");
-        self.timer += dt * animation_data.fps;
+        
+        let start_frame = if let Some(loop_frame) = animation_data.loop_frame {
+            loop_frame
+        } else {
+            animation_data.start_frame
+        };
+        let end_frame = start_frame as f32 + animation_data.total_time() + 1f32;
+
+        if self.timer > start_frame as f32 + end_frame {
+            if let Some(loop_frame) = animation_data.loop_frame {
+                self.timer = loop_frame as f32;
+            } else {
+                self.timer = end_frame;//animation_data.start_frame as f32;
+            }
+            if let Some(into_animation) = self.into_animation_optional.take() {
+                self.play_animation(into_animation);
+            }
+        } else {
+            self.timer += dt * animation_data.fps;
+        }
+    }
+
+    pub fn is_end(&self) -> bool {
+        let animation_data = self
+            .animations
+            .get(&self.current_animation)
+            .expect("NO ANIMATION");
 
         let start_frame = if let Some(loop_frame) = animation_data.loop_frame {
             loop_frame
         } else {
             animation_data.start_frame
         };
-        if self.timer > start_frame as f32 + animation_data.total_time() + 1f32 {
-            if let Some(loop_frame) = animation_data.loop_frame {
-                self.timer = loop_frame as f32;
-            } else {
-                self.timer = animation_data.start_frame as f32;
-            }
-            if let Some(into_animation) = self.into_animation_optional.take() {
-                self.play_animation(into_animation);
-            }
-        }
+        let end_frame = start_frame as f32 + animation_data.total_time() + 1f32;
+        
+        self.timer > start_frame as f32 + end_frame
     }
 
     pub fn play_animation(&mut self, identifier: A) {
@@ -122,15 +141,15 @@ where
         self.timer = animation_data.start_frame as f32;
     }
 
-    pub fn draw(&self, pos: &Vec2, flip_x: bool) {
+    pub fn draw(&self, pos: &Vec2, flip_x: bool, scale: Option<Vec2>, color: Color) {
         let x_index = self.timer as i32 % (self.sprite_data.columns) as i32;
         let y_index = (self.timer as f32 / self.sprite_data.columns).floor();
 
         draw_texture_ex(
-            self.sprite_data.texture,
-            pos.x - self.sprite_data.true_size.x * self.scale.x * 0.5f32,
-            pos.y - self.sprite_data.true_size.y * self.scale.y * 0.5f32,
-            WHITE,
+            &self.sprite_data.texture,
+            pos.x,
+            pos.y,
+            color,
             DrawTextureParams {
                 flip_x,
                 dest_size: Some(vec2(
@@ -143,6 +162,7 @@ where
                     w: self.sprite_data.true_size.x,
                     h: self.sprite_data.true_size.y,
                 }),
+                scale,
                 ..Default::default()
             },
         );
